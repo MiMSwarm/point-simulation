@@ -56,7 +56,7 @@ def simple_map():
 
 if __name__ == '__main__':
     print('Initializing environment => ')
-    env = Environment(simple_map, nbot=2, center=(3, -1), radius=1)
+    env = Environment(simple_map, nbot=8, center=(3, -1.5), radius=1.)
     env.update()
 
     fig = plt.figure()

@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -18,3 +19,10 @@ def pol2cart(p):
     x = p[0] * np.cos(p[1])
     y = p[0] * np.sin(p[1])
     return np.array((x, y))
+
+
+def new_plot(*args, **kwargs):
+    fig = plt.figure()
+    axes = fig.add_subplot(111)
+    axes.plot(*args, **kwargs)
+    return fig, axes

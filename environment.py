@@ -121,27 +121,41 @@ class Environment:
 
         # Initialize robots.
         print('Initializing robots ... ', end='', flush=True)
+
         self.robots = []
+        center = np.array(center)
         for i in range(nbot):
-            while True:
+
+            condition = True
+            while condition:
                 r = np.random.uniform(0, radius)
                 w = np.random.uniform(-np.pi, np.pi)
-                pos = np.round(pol2cart((r, w)), 2)
-                if pos not in self.map:
-                    break
-            self.robots.append(dict(
-                bot=MiniMapper(self, i), pos=pos,
-                ang=np.random.uniform(0, 2*np.pi)))
+                pos = np.round(center + pol2cart((r, w)), 2)
+                condition = pos in self.map
+
+            orient = np.random.uniform(-np.pi, np.pi)
+            self.robots.append({
+                'bot': MiniMapper(self, i),
+                'initial_pos': np.copy(pos),
+                'current_pos': np.copy(pos),
+                'initial_ang': orient,
+                'current_ang': orient,
+            })
+
         print('done.')
 
         # Initialize person if required.
+        self.person = None
         if person:
             print('Initializing person ... ', end='', flush=True)
-            while True:
+
+            condition = True
+            while condition:
                 x = np.uniform.random(*self.map.xlimits)
                 y = np.uniform.random(*self.map.ylimits)
-                if (x, y) not in self.map:
-                    break
+                condition = (x, y) in self.map
+
+            self.person = np.array((x, y))
             print('done.')
 
     def update(self):
@@ -171,7 +185,7 @@ class Environment:
 
         self.map.plot(fig, ax)
         points = np.array([mim['pos'] for mim in self.robots])
-        ax.plot(points[:, 0], points[:, 1], 'ko', ms=1, lw=1)
+        ax.plot(points[:, 0], points[:, 1], 'ko', ms=2)
         plt.grid(which='major')
 
         if save:
@@ -179,12 +193,12 @@ class Environment:
 
     def estimate_sensor_readings(self, mim_id):
         mim = self.robots[mim_id]
-        neighbors = [bot['pos'] for bot in self.robots if bot != mim]
+        neighbors = [bot['current_pos'] for bot in self.robots if bot != mim]
 
-        pos = mim['pos']
-        ang = mim['ang']
+        pos = mim['current_pos']
+        ang = mim['current_ang']
 
-        angles = np.arange(ang-np.pi, ang+np.pi, np.pi/90)
+        angles = np.arange(-np.pi, np.pi, np.pi/90)
         radius = np.arange(0.05, 4.0, 0.01)
 
         # Estimate sonar readings.
@@ -201,7 +215,22 @@ class Environment:
         # Check for other objects.
         for bpos in neighbors:
             p = cart2pol(bpos - pos)
-            w = p[1] - ang
-            i = rounded_int((w + np.pi) * 90 / np.pi)
+            i = rounded_int((p[1] + np.pi) * 90 / np.pi) % 180
             if sonar[i] > p[0]:
                 sonar[i] = p[0]
+
+        shift = rounded_int((ang + np.pi) * 90 / np.pi)
+        sonar = np.roll(sonar, shift)
+        return {'sonar': sonar}
+
+    def update_robot(self, mim_id, pos, ang):
+        mim = self.robots[mim_id]
+        mim['current_ang'] = mim['initial_ang'] + mim.orientation
+
+        # Undo the rotation of orientation.
+        pol_mim = cart2pol(mim.position)
+        pol_mim[1] -= mim['initial_ang']
+
+        # Translate the coordinates.
+        rec_mim = pol2cart(pol_mim)
+        mim['current_pos'] = mim['initial_pos'] + rec_mim
