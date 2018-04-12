@@ -12,8 +12,8 @@ np.set_printoptions(precision=2)
 
 class RobotSwarm:
 
-    def __init__(self, nbot, mass=.5, R_dist=1., F_max=.2, V_max=.1,
-                 power=2, friction=.05):
+    def __init__(self, nbot, mass=1., R_dist=1., F_max=.2, V_max=.1,
+                 power=3, friction=.1):
         self.n = nbot
         self.m = mass
         self.R = R_dist
@@ -22,7 +22,7 @@ class RobotSwarm:
 
         self.p = power
         self.u = friction
-        self.G = 1.8 * self.F * (self.R ** self.p) / (2 * np.sqrt(3))
+        self.G = 0.2
 
         self.v = np.zeros((self.n, 2))
         self.X = np.random.uniform(-5, 5, (self.n, 2))
@@ -68,7 +68,7 @@ class RobotSwarm:
 if __name__ == '__main__':
 
     fig, ax = plt.subplots()
-    rs = RobotSwarm(128)
+    rs = RobotSwarm(256)
     rs.setup_plot(fig, ax)
-    anim = FuncAnimation(fig, rs, interval=50)
+    anim = FuncAnimation(fig, rs, interval=100)
     plt.show()
