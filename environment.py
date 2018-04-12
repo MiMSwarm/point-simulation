@@ -77,7 +77,7 @@ class ObstacleMap:
         ax.xaxis.set_major_locator(MultipleLocator(1.0))
         ax.yaxis.set_major_locator(MultipleLocator(1.0))
 
-        ax.plot(self._obstacles[:, 0], self._obstacles[:, 1], 'ko', ms=1, lw=1)
+        ax.plot(self._obstacles[:, 0], self._obstacles[:, 1], 'ko', ms=.5)
 
         if save:
             plt.savefig(save)
