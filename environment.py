@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
 from robot import MiniMapper
+from utils import rounded_int, cart2pol, pol2cart
 
 
 class ObstacleMap:
@@ -15,6 +16,7 @@ class ObstacleMap:
         resolution of the map should be 0.01.
 
     """
+
     def __init__(self, map_fn):
         self._obstacles = map_fn()
         xvalues = self._obstacles[:, 0]
@@ -24,8 +26,8 @@ class ObstacleMap:
         self.ylimits = np.min(yvalues), np.max(yvalues)
 
         self._internal_map = np.ndarray((
-            int(round((self.xlimits[1] - self.xlimits[0]) * 100)) + 1,
-            int(round((self.ylimits[1] - self.ylimits[0]) * 100)) + 1),
+            rounded_int((self.xlimits[1] - self.xlimits[0]) * 100) + 1,
+            rounded_int((self.ylimits[1] - self.ylimits[0]) * 100) + 1),
             dtype=bool)
 
         for x, y in self._obstacles:
@@ -34,17 +36,20 @@ class ObstacleMap:
     def __getitem__(self, key):
         if len(key) != 2:
             raise ValueError('Must be a 2-tuple (x, y).')
+        if not (self.xlimits[0] < key[0] < self.xlimits[1]) or \
+                not (self.ylimits[0] < key[1] < self.ylimits[1]):
+            return False
 
-        x = int(round((key[0] - self.xlimits[0]) * 100))
-        y = int(round((key[1] - self.ylimits[0]) * 100))
+        x = rounded_int((key[0] - self.xlimits[0]) * 100)
+        y = rounded_int((key[1] - self.ylimits[0]) * 100)
         return self._internal_map[x, y]
 
     def __setitem__(self, key, value):
         if len(key) != 2:
             raise ValueError('Must be a 2-tuple (x, y).')
 
-        x = int(round((key[0] - self.xlimits[0]) * 100))
-        y = int(round((key[1] - self.ylimits[0]) * 100))
+        x = rounded_int((key[0] - self.xlimits[0]) * 100)
+        y = rounded_int((key[1] - self.ylimits[0]) * 100)
         self._internal_map[x, y] = value
 
     def __contains__(self, item):
@@ -120,8 +125,8 @@ class Environment:
         for i in range(nbot):
             while True:
                 r = np.random.uniform(0, radius)
-                θ = np.random.uniform(0, 2*np.pi)
-                pos = (center[0] + (r*np.cos(θ)), center[1] + (r*np.sin(θ)))
+                w = np.random.uniform(-np.pi, np.pi)
+                pos = np.round(pol2cart((r, w)), 2)
                 if pos not in self.map:
                     break
             self.robots.append(dict(
@@ -138,6 +143,12 @@ class Environment:
                 if (x, y) not in self.map:
                     break
             print('done.')
+
+    def update(self):
+        """Update the environment."""
+        for mim in self.robots:
+            mim['bot'].sense_environment()
+            mim['bot'].update_position()
 
     def plot(self, fig=None, ax=None, save=None):
         """Plot the environment.
@@ -168,7 +179,29 @@ class Environment:
 
     def estimate_sensor_readings(self, mim_id):
         mim = self.robots[mim_id]
+        neighbors = [bot['pos'] for bot in self.robots if bot != mim]
+
+        pos = mim['pos']
+        ang = mim['ang']
+
+        angles = np.arange(ang-np.pi, ang+np.pi, np.pi/90)
+        radius = np.arange(0.05, 4.0, 0.01)
 
         # Estimate sonar readings.
-        angles = np.arange(0, 2*np.pi, np.pi/90)
-        radius = np.arange(0.05, 4.0, 0.01)
+        sonar = np.full(angles.shape, 4.0)
+
+        # Check for obstacles first.
+        for i, w in enumerate(angles):
+            for r in radius:
+                p = pos + pol2cart((r, w))
+                if self.map[p[0], p[1]]:
+                    sonar[i] = r
+                    break
+
+        # Check for other objects.
+        for bpos in neighbors:
+            p = cart2pol(bpos - pos)
+            w = p[1] - ang
+            i = rounded_int((w + np.pi) * 90 / np.pi)
+            if sonar[i] > p[0]:
+                sonar[i] = p[0]

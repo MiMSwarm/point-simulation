@@ -56,8 +56,12 @@ def simple_map():
 
 if __name__ == '__main__':
     print('Initializing environment => ')
-    env = Environment(simple_map, center=(3, -1), radius=1)
+    env = Environment(simple_map, nbot=2, center=(3, -1), radius=1)
+    env.update()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
     print('Constructing plot ... ', end='', flush=True)
-    env.plot()
+    env.plot(fig, ax)
     print('done.')
     plt.show()
