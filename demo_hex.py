@@ -12,8 +12,8 @@ np.set_printoptions(precision=2)
 
 class RobotSwarm:
 
-    def __init__(self, nbot, mass=1., R_dist=1., F_max=.2, V_max=.1,
-                 power=3, friction=.1):
+    def __init__(self, nbot, mass=.5, R_dist=1., F_max=.2, V_max=.2,
+                 power=3, friction=.01):
         self.n = nbot
         self.m = mass
         self.R = R_dist
@@ -22,10 +22,10 @@ class RobotSwarm:
 
         self.p = power
         self.u = friction
-        self.G = 0.2
+        self.G = 0.15
 
         self.v = np.zeros((self.n, 2))
-        self.X = np.random.uniform(-5, 5, (self.n, 2))
+        self.X = np.random.uniform(-3, 3, (self.n, 2))
 
     def setup_plot(self, fig, ax):
         self.fig = fig
@@ -48,7 +48,7 @@ class RobotSwarm:
         r = distance.squareform(r)
 
         f[r > self.R] *= -1                 # Attractive or Repulsive force.
-        f[r > (1.5 * self.R)] = 0           # Can't see too far.
+        f[r > (1.1 * self.R)] = 0           # Can't see too far.
 
         # Estimating the direction of force.
         unit = self.X[None, :] - self.X[:, None]
@@ -70,5 +70,5 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     rs = RobotSwarm(256)
     rs.setup_plot(fig, ax)
-    anim = FuncAnimation(fig, rs, interval=100)
+    anim = FuncAnimation(fig, rs, interval=50)
     plt.show()

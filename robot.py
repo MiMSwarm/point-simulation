@@ -1,5 +1,12 @@
 import numpy as np
-from utils import new_plot, pol2cart, cart2pol
+from utils import pol2cart, cart2pol
+# from utils import new_plot, pol2cart, cart2pol
+# import matplotlib.pyplot as plt
+
+
+# Constants.
+ANGLES_RANGE = np.arange(-np.pi, np.pi, np.pi/90)
+RADIUS_RANGE = np.arange(0.05, 4.0, 0.005)
 
 
 class MiniMapper:
@@ -34,9 +41,7 @@ class MiniMapper:
 
     def sense_environment(self):
         sensed = self.environ.estimate_sensor_readings(self.ident)
-
-        angle = np.arange(-np.pi, np.pi, np.pi/90)
-        sonar = np.vstack((sensed['sonar'][None], angle[None])).T
+        sonar = np.vstack((sensed['sonar'][None], ANGLES_RANGE[None])).T
 
         # Detect other robots
         estimated_robots = []
@@ -59,6 +64,10 @@ class MiniMapper:
             else:
                 non_robot_detect.append(sonar[i])
 
+        # diff = [sonar[i, 0] - sonar[i-1, 0] for i in range(sonar.shape[0])]
+        # new_plot(np.arange(len(diff)), np.array(diff))
+        # new_plot(np.arange(sonar.shape[0]), sonar[:, 0])
+
         force = np.array([0.0, 0.0])
         for bot in estimated_robots:
             if bot[0] > (2.0 * self.rmax):
@@ -76,16 +85,12 @@ class MiniMapper:
             fmag = self.G * (self.mass**2) / (pnt[0]**self.p)
             if pnt[0] > (1.1 * self.rmax):
                 fmag *= -1
-            force += pol2cart((fmag, bot[1]))
+            force += pol2cart((fmag, pnt[1]))
 
         self.accel = force / self.mass
 
         # Detecting entrances.
         # estimated_entrance = []
-
-        # diff = [sonar[i, 0] - sonar[i-1, 0] for i in range(sonar.shape[0])]
-        # new_plot(np.arange(len(diff)), np.array(diff))
-        # new_plot(np.arange(sonar.shape[0]), sonar[:, 0])
 
     def update_position(self):
         pol_acc = cart2pol(self.accel)
