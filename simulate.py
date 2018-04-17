@@ -1,6 +1,6 @@
 from environment import Environment
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+# from matplotlib.animation import FuncAnimation
 import numpy as np
 
 
@@ -57,9 +57,14 @@ def simple_map():
 
 if __name__ == '__main__':
     print('Initializing environment => ')
-    env = Environment(simple_map, nbot=1, center=(3, -1.5), radius=1.)
-    env()
+    env = Environment(
+        simple_map, nbot=2, center=(0, 0), radius=1.)
+
+    max_iter = 1
+    for i in range(max_iter):
+        env.update()
+    plt.show()
+
     # ani = FuncAnimation(env.fig, env, interval=50)
     # env.plot()
-    # plt.show()
     # print('')
