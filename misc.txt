@@ -1,0 +1,11 @@
+
+Plotting points
+---------------
+
+curr_pos = np.array([mim['current_pos'] for mim in self.robots])
+init_pos = np.array([mim['initial_pos'] for mim in self.robots])
+f, a = ut.new_plot(curr_pos[:, 0], curr_pos[:, 1], 'ro', ms=2)
+a.plot(init_pos[:, 0], init_pos[:, 1], 'bo', ms=2)
+for mim in self.robots:
+    a.annotate(ut.rounded_int(np.degrees(mim['current_ang'])),
+                (mim['current_pos'][0], mim['current_pos'][1]))

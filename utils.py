@@ -12,6 +12,18 @@ def stat_print(*args, **kwargs):
     print(*args, **kwargs)
 
 
+def degree_ind(radians, step=2):
+    """Get the index into the SONAR array."""
+    if np.isscalar(radians):
+        deg = rounded_int(np.degrees(radians)) + 180
+        deg = 0 if deg == 360 else deg
+    else:
+        radians = np.asarray(radians)
+        deg = np.rint(np.degrees(radians)).astype(int) + 180
+        deg[deg == 360] = 0
+    return deg // step
+
+
 def rounded_int(x):
     """Round the value in `x` and typecast to int."""
     return int(np.round(x)) if np.isscalar(x) else np.round(x).astype(int)

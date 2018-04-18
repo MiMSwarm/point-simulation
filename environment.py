@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
+import sys
 
 from constants import INFRA, SONAR
+from exceptions import SimulationError
 from robot import MiniMapper
 from obstacle import ObstacleMap
 import utils as ut
@@ -98,20 +100,39 @@ class Environment:
 
         # Initializing robots
         ut.stat_print('\tInitializing MiniMappers ...')
-        for rob in self.robots:
-            rob['bot'].initial_setup()
+        try:
+            for rob in self.robots:
+                rob['bot'].initial_setup()
+        except SimulationError as sim_err:
+            pos = self.robots[sim_err.ident]['current_pos']
+            ang = self.robots[sim_err.ident]['current_ang']
+            infra = self.robots[sim_err.ident].infra
+
+            print('failed.\n')
+            print(sim_err)
+            print('Robot located at ({0}, {1}) at {2}°.'.format(
+                pos, ut.rounded_int(np.degrees(ang))))
+            print('Infrared: {front} {right} {rear} {left}'.format(**infra))
+            sys.exit(-1)
         print('done.')
+
+        # curr_pos = np.array([mim['current_pos'] for mim in self.robots])
+        # init_pos = np.array([mim['initial_pos'] for mim in self.robots])
+        # f, a = ut.new_plot(curr_pos[:, 0], curr_pos[:, 1], 'ro', ms=2)
+        # a.plot(init_pos[:, 0], init_pos[:, 1], 'bo', ms=2)
+        # for mim in self.robots:
+        #     a.annotate(ut.rounded_int(np.degrees(mim['current_ang'])),
+        #                (mim['current_pos'][0], mim['current_pos'][1]))
 
     def update(self):
         """Update the environment. Invokes the `MiniMapper.sense_environment`
         and `MiniMapper.update_position` for each robot. However, the order of
         robots for which these methods are invoked is random.
         """
-        order = np.arange(len(self.robots))
-        np.random.shuffle(order)
-        for i in order:
-            self.robots[i]['bot'].sense_environment()
-            self.robots[i]['bot'].update_position()
+        for bot in self.robots:
+            bot['bot'].sense_environment()
+            # bot['bot'].update_position()
+            return
 
     def plot(self, fig=None, axes=None, save=None):
         """Plot the environment.
@@ -140,7 +161,7 @@ class Environment:
         if save:
             plt.savefig(save)
 
-    def estimate_sensor_readings(self, mim_id):
+    def estimate_percepts(self, mim_id):
         """Estimate the SONAR and Infrared readings for the robot identified by
         the argument `mim_id`.
 
@@ -154,7 +175,8 @@ class Environment:
         sensor : dict
             A dictionary of sensor readings,
                 sonar : numpy.ndarray
-                    The SONAR readings corresponding to `utils.CIRCLE_2DEG`.
+                    The SONAR readings corresponding to constants defined in
+                    `constants.SONAR`.
                 infra : dict
                     The Infrared readings for 'front', 'right', 'rear', 'left'.
         """
@@ -191,8 +213,7 @@ class Environment:
         # Check for other objects.
         for bpos in neighbors:
             pt = ut.cart2pol(bpos - pos)
-            ii = ut.rounded_int((pt[1]+np.pi) * 90 / np.pi)
-            ii = 0 if ii == 180 else ii
+            ii = ut.degree_ind(pt[1])
             if sonar[ii] > pt[0]:                       # Update SONAR
                 sonar[ii] = pt[0]
 
@@ -203,23 +224,31 @@ class Environment:
                     infra[ind] = pt[0]
 
         return {
-            'sonar': np.roll(sonar, ut.rounded_int((ang+np.pi) * 90 / np.pi)),
-            'infra': {v: infra[i] for i, v in enumerate(INFRA.ORIENT_ID)}
+            'sonar': np.roll(
+                sonar, (len(SONAR.ANGLE_RES)//2) - ut.degree_ind(ang)),
+            'infra': {v: (infra[i] < mim['bot'].rmax)
+                      for i, v in enumerate(INFRA.ORIENT_ID)}
         }
 
     def update_robot(self, mim_id):
+        """Called by the robot to register it's updated position with the
+        environment. Updates its absolute position and orientation.
+        """
         mim = self.robots[mim_id]
+
+        # MiM maintains an orientation relative to initial orientation.
         mim['current_ang'] = mim['initial_ang'] + mim['bot'].orientation
 
-        # Undo the rotation of orientation.
-        pol_mim = ut.cart2pol(mim['bot'].position)
-        pol_mim[1] -= mim['initial_ang']
-
-        # Translate the coordinates.
-        rec_mim = ut.pol2cart(pol_mim)
-        mim['current_pos'] = mim['initial_pos'] + rec_mim
+        # Rotate and translate to change frame of reference.
+        pos = np.copy(mim['bot'].position)
+        cos = pos*np.cos(mim['initial_ang'])
+        sin = pos*np.sin(mim['initial_ang'])
+        pos[0] = cos[0] - sin[1]
+        pos[1] = sin[0] + cos[1]
+        mim['current_pos'] = mim['initial_pos'] + pos
 
     def __call__(self, ii=None):
+        """Execute one iteration of the environment."""
         if ii is not None:
             print('Iteration {:04}'.format(ii), end='\r')
         self.update()

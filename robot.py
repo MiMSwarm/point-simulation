@@ -1,4 +1,5 @@
-from constants import SONAR, INFRA
+from constants import SONAR
+from exceptions import SimulationError
 
 import numpy as np
 import utils as ut
@@ -16,81 +17,58 @@ class MiniMapper:
         The environment within which the object resides.
     """
 
-    def __init__(self, env, ident=None, mass=1., R_dist=.1, F_max=.02,
-                 V_max=.01, power=3, friction=.1):
+    def __init__(self, env, ident=None, mass=1., R_dist=.2, F_max=.02,
+                 V_max=.01, power=3, friction=.1, Gconst=.2):
         self.ident = ident
         self.environ = env
 
-        self.position = np.array([0.0, 0.0])
-        self.velocity = np.array([0.0, 0.0])
+        self.position = np.zeros(2)
+        self.velocity = np.zeros(2)
         self.orientation = 0.0
 
-        self.mass = 1.0
-        self.rmax = 0.4
-        self.fmax = 0.02
-        self.vmax = 0.01
+        self.mass = mass
+        self.rmax = R_dist
+        self.fmax = F_max
+        self.vmax = V_max
 
-        self.p = 3
-        self.u = 0.1
-        self.G = 0.2
+        self.p = power
+        self.u = friction
+        self.G = Gconst
 
     def sense_environment(self):
         """The robot senses the environment and determines locations of walls,
         entrances and other robots.
         """
-        sensor_estimates = self.environ.estimate_sensor_readings(self.ident)
+        sensor_estimates = self.environ.estimate_percepts(self.ident)
         sonar = np.vstack((
             sensor_estimates['sonar'][None], SONAR.ANGLE_RES[None])).T
-        infra = sensor_estimates['infra']
+        tmp = ut.pol2cart(sonar)
+        fig, ax = ut.new_plot(tmp[:, 0], tmp[:, 1], 'o', ms=1)
+        tmp2 = ut.pol2cart(self.sonar)
+        ax.plot(tmp2[:, 0], tmp2[:, 1], 'o', ms=1)
+        # infra = sensor_estimates['infra']
+        self.detect_robots(sonar)
 
-        # Detect other robots
-        estimated_robots = []
-        non_robot_detect = []
+    def detect_robots(self, sonar):
+        """Tries to identify robots from the sensor readings."""
+        condn = (self.sonar[:, 0] < 2.0) & (sonar[:, 0] < 2.0)
 
-        res = sonar.shape[0]
-        for i in range(sonar.shape[0]):
-            if sonar[i-1, 0] == 4.0:
-                continue
+        vec_a = ut.cart2pol(self.velocity)
+        vec_c = self.sonar[condn]
+        vec_b = np.empty(vec_c.shape)
 
-            d1 = sonar[i-2, 0] - sonar[i-1, 0]
-            d2 = sonar[i-1, 0] - sonar[i, 0]
-            d3 = sonar[i, 0] - sonar[(i+1) % res, 0]
-            d4 = sonar[(i+1) % res, 0] - sonar[(i+2) % res, 0]
+        θ = vec_c[:, 1] - vec_a[1]                  # Angle between vectors.
+        P = -vec_a[0]                               # Mag of vector a.
+        Q = vec_c[:, 0]                             # Mag of vector c.
 
-            check1 = (d2 * d3) < 0
-            check2 = np.abs(d2-d1) > 0.05 and np.abs(d3-d4) > 0.05
-            if check1 and check2:
-                estimated_robots.append(sonar[i])
-            else:
-                non_robot_detect.append(sonar[i])
+        # Calculating b = c - a
+        vec_b[:, 0] = np.sqrt((P**2) + (2*P*Q*np.cos(θ)) + (Q**2))
+        vec_b[:, 1] = np.arctan2(Q*np.sin(θ), Q*np.cos(θ) + P)
 
-        # diff = [sonar[i, 0] - sonar[i-1, 0] for i in range(sonar.shape[0])]
-        # new_plot(np.arange(len(diff)), np.array(diff))
-        # new_plot(np.arange(sonar.shape[0]), sonar[:, 0])
-
-        force = np.array([0.0, 0.0])
-        for bot in estimated_robots:
-            if bot[0] > (2.0 * self.rmax):
-                continue
-
-            fmag = self.G * (self.mass**2) / (bot[0]**self.p)
-            if bot[0] > self.rmax:
-                fmag *= -1
-            force += ut.pol2cart((fmag, bot[1]))
-
-        for pnt in non_robot_detect:
-            if pnt[0] > (2.0 * self.rmax):
-                continue
-
-            fmag = self.G * (self.mass**2) / (pnt[0]**self.p)
-            if pnt[0] > (1.1 * self.rmax):
-                fmag *= -1
-            force += ut.pol2cart((fmag, pnt[1]))
-
-        self.accel = force / self.mass
-
-        # Detecting entrances.
-        # estimated_entrance = []
+        # The angles give the indices into sonar
+        ind = ut.degree_ind(vec_b[:, 1])
+        print(np.round(np.abs(sonar[ind, 0] - vec_b[:, 0]), 2))
+        # print(np.sum((sonar[ind, 0] - vec_b[:, 0]) > .5))
 
     def update_position(self):
         pol_acc = ut.cart2pol(self.accel)
@@ -104,29 +82,27 @@ class MiniMapper:
 
     def initial_setup(self):
         """Called after the environment construction is complete."""
-        sensor_estimates = self.environ.estimate_sensor_readings(self.ident)
+        sensor_estimates = self.environ.estimate_percepts(self.ident)
         self.sonar = np.vstack((
             sensor_estimates['sonar'][None], SONAR.ANGLE_RES[None])).T
         self.infra = sensor_estimates['infra']
 
-        if self.infra['front'] > .15:
-            self.position[1] += .1
-        elif self.infra['rear'] > .15:
-            self.position[1] -= .1
-        elif self.infra['right'] > .15:
-            self.orientation = -np.pi / 2
-            self.position[0] += 1
-        elif self.infra['left'] > .15:
-            self.orientation = np.pi / 2
-            self.position[0] -= 1
+        if not self.infra['front']:
+            self.velocity[0] = .10
+        elif not self.infra['rear']:
+            self.velocity[0] = -.10
+        elif not self.infra['right']:
+            self.velocity[1] = -.10
+        elif not self.infra['left']:
+            self.velocity[1] = .10
         else:
-            raise RuntimeError(
-                "Unable to move robot at ({0}, {1}).".format(*self.position))
+            raise SimulationError(self.ident)
 
+        self.position += self.velocity
         self.environ.update_robot(self.ident)
 
     def recalibrate(self):
         del self.accel
-        self.position = np.array([0.0, 0.0])
-        self.velocity = np.array([0.0, 0.0])
+        self.position = np.zeros(2)
+        self.velocity = np.zeros(2)
         self.orientation = 0.0
