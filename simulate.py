@@ -44,22 +44,22 @@ def simple_map():
     for wall in walls:
         if wall[0] == 'vertical':
             xval, ystart, ystop = wall[1:]
-            for x in np.arange(xval-.02, xval+.02, .01):
-                pts.append(vertical_line(x, ystart, ystop))
+            for x in np.arange(xval-.01, xval+.02, .01):
+                pts.append(vertical_line(x, ystart-0.01, ystop+0.01))
 
         if wall[0] == 'horizontal':
             xstart, xstop, yval = wall[1:]
-            for y in np.arange(yval-.02, yval+.02, .01):
-                pts.append(horizontal_line(xstart, xstop, y))
+            for y in np.arange(yval-.01, yval+.02, .01):
+                pts.append(horizontal_line(xstart-0.01, xstop+0.01, y))
 
     return np.hstack(pts).T
 
 
 if __name__ == '__main__':
-    print('Initializing environment => ')
+    print('\nInitializing environment ...')
     env = Environment(
-        simple_map, nbot=2, center=(0, 0), radius=1.)
-
+        simple_map, nbot=2, center=(3, -1), radius=.7)
+    print('... done.')
     max_iter = 1
     for i in range(max_iter):
         env.update()

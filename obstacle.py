@@ -50,8 +50,6 @@ class ObstacleMap:
         Array-like objects are permitted as long as `key.shape[-1] == 2`.
         """
         pts = np.asarray(key)
-        res = np.ndarray(pts.shape[:-1], dtype=bool)
-
         res = ((pts[..., 0] >= self.xmin) & (pts[..., 0] <= self.xmax) &
                (pts[..., 1] >= self.ymin) & (pts[..., 1] <= self.ymax))
 
@@ -61,6 +59,13 @@ class ObstacleMap:
         x = np.rint((pts[..., 0] - self.xmin) * 100).astype(int)
         y = np.rint((pts[..., 1] - self.ymin) * 100).astype(int)
         self._internal_map[x, y] = value
+
+    def __contains__(self, item):
+        """Syntactic sugar to check if item is within the limits of the map."""
+        pts = np.asarray(item)
+        res = ((pts[..., 0] >= self.xmin) & (pts[..., 0] <= self.xmax) &
+               (pts[..., 1] >= self.ymin) & (pts[..., 1] <= self.ymax))
+        return res
 
     def plot(self, fig=None, axes=None, save=None):
         """Plot the map.

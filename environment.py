@@ -24,62 +24,65 @@ class Environment:
         resolution of the map should be 0.01.
     nbot : int, optional
         Number of robots.
-    person : bool, optional
-        Whether to simulate a person through sound and temperature, or not.
     center : array-like, optional
         The Swarm is initialized around this point.
     radius : float, optional
         The max. distance from center a robot can be initialized.
+    plot : bool, optional
+        Whether to plot the simulation or not.
     """
 
-    def __init__(self, map_fn, nbot=20, person=False,
-                 center=(0, 0), radius=0.5, plot=True):
+    def __init__(self, map_fn, nbot=20, center=(0, 0), radius=0.5, plot=True):
+        # Buffer arrays
+        self._buf_infpol = np.empty((
+            INFRA.ANGLE_RES.shape[0], INFRA.RANGE_RES.shape[0], 2))
+        self._buf_infcar = np.empty((self._buf_infpol.shape))
+
         # Initialize map.
-        print('Constructing map ... ', end='', flush=True)
+        ut.stat_print('\tConstructing map ...')
         self.map = ObstacleMap(map_fn)
         print('done.')
 
-        # Initialize robots.
-        print('Initializing robots ... ', end='', flush=True)
+        # Creating robots.
+        ut.stat_print('\tCreating MiniMappers ...')
 
-        self.robots = []
         center = np.array(center)
+        self.robots = []
+        positions = np.empty((nbot, 2))
         for i in range(nbot):
 
-            condition = True
-            while condition:
+            condition = np.full(5, True)
+            while np.any(condition):
                 r = np.random.uniform(0, radius)
                 w = np.random.uniform(-np.pi, np.pi)
-                pos = np.round(center + ut.pol2cart((r, w)), 2)
-                condition = pos in self.map
+                positions[i] = np.round(center + ut.pol2cart((r, w)), 2)
+
+                # Ensures robots are not initialized within 20cm of the map
+                condition[:] = (
+                    (positions[i] + np.array([0, .2])) in self.map,
+                    (positions[i] - np.array([0, .2])) in self.map,
+                    (positions[i] + np.array([.2, 0])) in self.map,
+                    (positions[i] - np.array([.2, 0])) in self.map, False)
+
+                # Ensures robots are not initialized within 20cm of themselves.
+                if i > 0:
+                    condition[4] = np.any(np.linalg.norm(
+                        positions[i] - positions[:i], axis=1) < .2)
 
             orient = np.random.uniform(-np.pi, np.pi)
             self.robots.append({
                 'bot': MiniMapper(self, i),
-                'initial_pos': np.copy(pos),
-                'current_pos': np.copy(pos),
+                'initial_pos': np.copy(positions[i]),
+                'current_pos': np.copy(positions[i]),
                 'initial_ang': orient,
                 'current_ang': orient,
             })
 
         print('done.')
 
-        # Initialize person if required.
-        self.person = None
-        if person:
-            print('Initializing person ... ', end='', flush=True)
-
-            condition = True
-            while condition:
-                x = np.uniform.random(*self.map.xlimits)
-                y = np.uniform.random(*self.map.ylimits)
-                condition = (x, y) in self.map
-
-            self.person = np.array((x, y))
-            print('done.')
-
         # Setting up the plot.
         if plot:
+            ut.stat_print('\tSetting up the plot ...')
             self.fig = plt.figure()
             self.axes = self.fig.add_subplot(111)
 
@@ -91,6 +94,13 @@ class Environment:
 
             self.axes.grid(which='major')
             self.plot()
+            print('done.')
+
+        # Initializing robots
+        ut.stat_print('\tInitializing MiniMappers ...')
+        for rob in self.robots:
+            rob['bot'].initial_setup()
+        print('done.')
 
     def update(self):
         """Update the environment. Invokes the `MiniMapper.sense_environment`
@@ -167,14 +177,13 @@ class Environment:
         iangle = INFRA.ANGLE_RES
         irange = INFRA.RANGE_RES
         imaxim = INFRA.MAX_RANGE
-        angles = np.array([ang + w for w in iangle])
+        angles = ang + iangle
         ut.shift_angles(angles)
 
-        infra_visual = ut.pol2cart(
-            ut.cartesian_product((angles, irange))[:, ::-1].reshape((
-                iangle.shape[0], irange.shape[0], 2)))
+        ut.cartesian_product((angles, irange), out=self._buf_infpol)
+        ut.pol2cart(self._buf_infpol[:, :, ::-1], out=self._buf_infcar)
 
-        infra = self.map[pos + infra_visual]
+        infra = self.map[pos + self._buf_infcar]
         infra = np.apply_along_axis(
             lambda w: irange[np.argmax(w)] if np.any(w) else imaxim,
             axis=1, arr=infra)
@@ -182,14 +191,15 @@ class Environment:
         # Check for other objects.
         for bpos in neighbors:
             pt = ut.cart2pol(bpos - pos)
-            ii = ut.rounded_int(np.degrees(pt[1])) // 2 + 90
-            if sonar[ii] > pt[0]:       # Update SONAR
+            ii = ut.rounded_int((pt[1]+np.pi) * 90 / np.pi)
+            ii = 0 if ii == 180 else ii
+            if sonar[ii] > pt[0]:                       # Update SONAR
                 sonar[ii] = pt[0]
 
             check = np.isclose(pt[1], angles)
             if np.any(check):
                 ind = np.argmax(check)
-                if infra[ind] > pt[0]:
+                if infra[ind] > pt[0]:                  # Update IR
                     infra[ind] = pt[0]
 
         return {

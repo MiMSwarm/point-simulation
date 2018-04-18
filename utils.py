@@ -3,6 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def stat_print(*args, **kwargs):
+    """Print with `end=' '` and `flush=True`. `end` and `flush` can be
+    overwritten.
+    """
+    kwargs['end'] = kwargs.pop('end', ' ')
+    kwargs['flush'] = kwargs.pop('flush', True)
+    print(*args, **kwargs)
+
+
 def rounded_int(x):
     """Round the value in `x` and typecast to int."""
     return int(np.round(x)) if np.isscalar(x) else np.round(x).astype(int)
@@ -129,4 +138,4 @@ def cartesian_product(arrays, out=None):
         arrs[i][..., i] = arrays[i][idx[:la-i]]
         arrs[i-1][1:] = arrs[i]
     arr[..., 0] = arrays[0][idx]
-    return arr.reshape(-1, la)
+    return arr

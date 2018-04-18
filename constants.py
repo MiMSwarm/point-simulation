@@ -11,10 +11,10 @@ class SONAR:
 
     # Visual plane in Cartesian Coordinates.
     VIS_PLANE = ut.pol2cart(
-        ut.cartesian_product((ANGLE_RES, RANGE_RES))[:, :: - 1].reshape((
-            ANGLE_RES.shape[0], RANGE_RES.shape[0], 2)))
+        ut.cartesian_product((ANGLE_RES, RANGE_RES))[:, :, ::-1])
 
 
+# The Infrared constants.
 class INFRA:
     ANGLE_RES = np.arange(-np.pi, np.pi, np.pi/2)
     RANGE_RES = np.arange(0.005, 0.3, 0.005)

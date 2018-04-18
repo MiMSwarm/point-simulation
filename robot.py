@@ -1,4 +1,5 @@
-from constants import SONAR
+from constants import SONAR, INFRA
+
 import numpy as np
 import utils as ut
 
@@ -34,8 +35,13 @@ class MiniMapper:
         self.G = 0.2
 
     def sense_environment(self):
-        sensed = self.environ.estimate_sensor_readings(self.ident)
-        sonar = np.vstack((sensed['sonar'][None], SONAR.ANGLE_RES[None])).T
+        """The robot senses the environment and determines locations of walls,
+        entrances and other robots.
+        """
+        sensor_estimates = self.environ.estimate_sensor_readings(self.ident)
+        sonar = np.vstack((
+            sensor_estimates['sonar'][None], SONAR.ANGLE_RES[None])).T
+        infra = sensor_estimates['infra']
 
         # Detect other robots
         estimated_robots = []
@@ -94,6 +100,29 @@ class MiniMapper:
         self.velocity += self.accel
         np.clip(self.velocity, -self.vmax, self.vmax, out=self.velocity)
         self.position += self.velocity
+        self.environ.update_robot(self.ident)
+
+    def initial_setup(self):
+        """Called after the environment construction is complete."""
+        sensor_estimates = self.environ.estimate_sensor_readings(self.ident)
+        self.sonar = np.vstack((
+            sensor_estimates['sonar'][None], SONAR.ANGLE_RES[None])).T
+        self.infra = sensor_estimates['infra']
+
+        if self.infra['front'] > .15:
+            self.position[1] += .1
+        elif self.infra['rear'] > .15:
+            self.position[1] -= .1
+        elif self.infra['right'] > .15:
+            self.orientation = -np.pi / 2
+            self.position[0] += 1
+        elif self.infra['left'] > .15:
+            self.orientation = np.pi / 2
+            self.position[0] -= 1
+        else:
+            raise RuntimeError(
+                "Unable to move robot at ({0}, {1}).".format(*self.position))
+
         self.environ.update_robot(self.ident)
 
     def recalibrate(self):
