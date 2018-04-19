@@ -58,10 +58,11 @@ def simple_map():
 if __name__ == '__main__':
     print('\nInitializing environment ...')
     env = Environment(
-        simple_map, nbot=12, center=(3, -1), radius=.7, plot=False)
+        simple_map, nbot=1, center=(1, -1), radius=.7, plot=True)
     print('... done.')
-    env.update()
-    # print('\nRunning simulation ...')
-    # ani = FuncAnimation(env.fig, env, interval=50)
+    print('\nRunning simulation ...')
+    # while True:
+    #     env()
+    ani = FuncAnimation(env.fig, env, interval=100)
     plt.show()
-    # print('\n... done.')
+    print('\n... done.')

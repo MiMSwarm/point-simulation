@@ -56,7 +56,7 @@ class Environment:
             condition = np.full(5, True)
             while np.any(condition):
                 r = np.random.uniform(0, radius)
-                w = np.random.uniform(-np.pi, np.pi)
+                w = np.random.uniform(-np.pi/2, np.pi/2)
                 positions[i] = np.round(center + ut.pol2cart((r, w)), 2)
 
                 # Ensures robots are not initialized within 20cm of the map
@@ -98,31 +98,8 @@ class Environment:
             self.plot()
             print('done.')
 
-        # Initializing robots
-        ut.stat_print('\tInitializing MiniMappers ...')
-        try:
-            for rob in self.robots:
-                rob['bot'].initial_setup()
-        except SimulationError as sim_err:
-            pos = self.robots[sim_err.ident]['current_pos']
-            ang = self.robots[sim_err.ident]['current_ang']
-            infra = self.robots[sim_err.ident].infra
-
-            print('failed.\n')
-            print(sim_err)
-            print('Robot located at ({0}, {1}) at {2}°.'.format(
-                pos, ut.rounded_int(np.degrees(ang))))
-            print('Infrared: {front} {right} {rear} {left}'.format(**infra))
-            sys.exit(-1)
-        print('done.')
-
-        # curr_pos = np.array([mim['current_pos'] for mim in self.robots])
-        # init_pos = np.array([mim['initial_pos'] for mim in self.robots])
-        # f, a = ut.new_plot(curr_pos[:, 0], curr_pos[:, 1], 'ro', ms=2)
-        # a.plot(init_pos[:, 0], init_pos[:, 1], 'bo', ms=2)
-        # for mim in self.robots:
-        #     a.annotate(ut.rounded_int(np.degrees(mim['current_ang'])),
-        #                (mim['current_pos'][0], mim['current_pos'][1]))
+        # For broadcasting current MiM.
+        self._current = None
 
     def update(self):
         """Update the environment. Invokes the `MiniMapper.sense_environment`
@@ -130,9 +107,7 @@ class Environment:
         robots for which these methods are invoked is random.
         """
         for bot in self.robots:
-            bot['bot'].sense_environment()
-            # bot['bot'].update_position()
-            return
+            self._current = bot['bot'].update(self._current)
 
     def plot(self, fig=None, axes=None, save=None):
         """Plot the environment.
@@ -226,11 +201,11 @@ class Environment:
         return {
             'sonar': np.roll(
                 sonar, (len(SONAR.ANGLE_RES)//2) - ut.degree_ind(ang)),
-            'infra': {v: (infra[i] < mim['bot'].rmax)
+            'infra': {v: (infra[i] < .3)
                       for i, v in enumerate(INFRA.ORIENT_ID)}
         }
 
-    def update_robot(self, mim_id):
+    def update_robot(self, mim_id, only_ang=False):
         """Called by the robot to register it's updated position with the
         environment. Updates its absolute position and orientation.
         """
@@ -250,7 +225,7 @@ class Environment:
     def __call__(self, ii=None):
         """Execute one iteration of the environment."""
         if ii is not None:
-            print('Iteration {:04}'.format(ii), end='\r')
+            print('\tIteration {:04}'.format(ii), end='\r')
         self.update()
         points = np.array([mim['current_pos'] for mim in self.robots])
         self.rsplot.set_data(points[:, 0], points[:, 1])
