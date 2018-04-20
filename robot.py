@@ -40,7 +40,9 @@ class MiniMapper:
         self.sonar = None
         self.infra = None
         self.reset = False
-        self.count = 0
+
+        self.check1 = False
+        self.check2 = False
 
         self.next_position = None
 
@@ -78,15 +80,17 @@ class MiniMapper:
                 print('\n\tRecalibrated to', ut.rounded_int(np.degrees(
                     self.environ.robots[self.ident]['initial_ang'])))
 
+                self.check1 = True
+                self.check2 = True
                 self.reset = True
                 self.velocity = np.array([0.0, 0.0])
 
                 if not self.infra[0]:
                     self.velocity[0] = -.05
                 elif not self.infra[1]:
-                    self.velocity[1] = +.05
-                elif not self.infra[2]:
                     self.velocity[1] = -.05
+                elif not self.infra[2]:
+                    self.velocity[1] = +.05
                 else:
                     self.velocity[0] = +.05
 
@@ -97,30 +101,29 @@ class MiniMapper:
                 self.sense_environment()
 
                 if np.all(~self.infra):
-                    self.count = 4 if self.count == 0 else self.count
-                    if self.count == 1:
+                    if self.check1:
                         self.velocity = np.array(
                             [[0, -1], [1, 0]]) @ self.velocity
                         self.orientation += np.pi / 2
                         self.orientation = ut.shift_angles(self.orientation)
-                    self.count -= 1
+                    self.check1 = False
 
                 elif np.any(self.infra_prev != self.infra):
-                    self.count = 4 if self.count == 0 else self.count
-                    if self.count == 4:
+                    if self.check2:
                         self.velocity[:] = 0.0
                         if not self.infra[0]:
                             self.velocity[0] = -.05
                         elif not self.infra[1]:
-                            self.velocity[1] = +.05
-                        elif not self.infra[2]:
                             self.velocity[1] = -.05
+                        elif not self.infra[2]:
+                            self.velocity[1] = +.05
                         else:
                             self.velocity[0] = +.05
-                    self.count -= 1
+                    self.check2 = False
                     self.infra_prev[:] = self.infra[:]
                 else:
-                    self.count = 0
+                    self.check1 = True
+                    self.check2 = True
 
                 self.position += self.velocity
                 self.environ.update_robot(self.ident)
