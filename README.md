@@ -29,12 +29,12 @@ The code was successfully tested on the following versions of the required libra
 
 ## Authors
 
-Abhijit J Theophilus, abhijit.theo@gmail.com\\
-Surya Prakash M, starsurya96@gmail.com\\
-Vinay Kumar Adiga G, vinayadiga96@gmail.com\\
+Abhijit J Theophilus, abhijit.theo@gmail.com
+Surya Prakash M, starsurya96@gmail.com
+Vinay Kumar Adiga G, vinayadiga96@gmail.com
 Vijayalaxmi Hullatti, vijayalaxmi.6868@gmail.com
 
 ## License
 
 Copyright 2018
-Licensed under the MIT License.\\
+Licensed under the MIT License.
