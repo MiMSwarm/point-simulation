@@ -1,5 +1,5 @@
 import numpy as np
-import utils as ut
+from . import utils as ut
 
 
 # The SONAR constants.

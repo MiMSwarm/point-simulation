@@ -25,7 +25,7 @@ class RobotSwarm:
         self.G = 0.15
 
         self.v = np.zeros((self.n, 2))
-        self.X = np.random.uniform(-3, 3, (self.n, 2))
+        self.X = np.random.uniform(-1, 1, (self.n, 2))
 
     def setup_plot(self, fig, ax):
         self.fig = fig
@@ -68,7 +68,7 @@ class RobotSwarm:
 if __name__ == '__main__':
 
     fig, ax = plt.subplots()
-    rs = RobotSwarm(256)
+    rs = RobotSwarm(20)
     rs.setup_plot(fig, ax)
     anim = FuncAnimation(fig, rs, interval=50)
     plt.show()

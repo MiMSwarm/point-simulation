@@ -1,4 +1,4 @@
-from environment import Environment
+from source import Environment
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import numpy as np

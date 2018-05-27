@@ -1,9 +1,7 @@
-from constants import SONAR
-from exceptions import SimulationError
-
 import numpy as np
-import utils as ut
-import sys
+
+from .constants import SONAR
+from . import utils as ut
 
 
 class MiniMapper:
@@ -73,7 +71,8 @@ class MiniMapper:
         else:
             if not self.reset:
                 self.sense_environment()
-                orient = np.arctan2(self.p2[1]-self.p1[1], self.p2[0]-self.p1[0])
+                orient = np.arctan2(
+                    self.p2[1] - self.p1[1], self.p2[0] - self.p1[0])
                 self.orientation = ut.shift_angles(orient)
                 self.environ.update_robot(self.ident)
                 self.recalibrate()

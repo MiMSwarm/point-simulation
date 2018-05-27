@@ -1,13 +1,11 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
 import numpy as np
-import sys
 
-from constants import INFRA, SONAR
-from exceptions import SimulationError
-from robot import MiniMapper
-from obstacle import ObstacleMap
-import utils as ut
+from .constants import INFRA, SONAR
+from .robot import MiniMapper
+from .obstacle import ObstacleMap
+from . import utils as ut
 
 
 class Environment:
