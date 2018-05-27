@@ -61,8 +61,6 @@ if __name__ == '__main__':
         simple_map, nbot=1, center=(1, -1), radius=.7, plot=True)
     print('... done.')
     print('\nRunning simulation ...')
-    # while True:
-    #     env()
     ani = FuncAnimation(env.fig, env, interval=100)
     plt.show()
     print('\n... done.')
