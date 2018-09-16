@@ -68,7 +68,7 @@ class RobotSwarm:
 if __name__ == '__main__':
 
     fig, ax = plt.subplots()
-    rs = RobotSwarm(20)
+    rs = RobotSwarm(256)
     rs.setup_plot(fig, ax)
     anim = FuncAnimation(fig, rs, interval=50)
     plt.show()
